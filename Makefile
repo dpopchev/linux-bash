@@ -12,239 +12,153 @@ SHELL := bash
 help:
 	@sed -nr '/#{3}/{s/\.PHONY:/--/; s/\ *#{3}/:/; p;}' ${MAKEFILE_LIST}
 
+# handy definitions...
+comma := ,
+empty :=
+space := $(empty) $(empty)
+
+# ...to achieve list joining
+foo := a b c
+bar := $(subst $(space),$(comma),$(foo))
+
+# ...use comma as argument
+rcs_archive := foo.c,v
+rcs_srcs := $(patsubst %$(comma)v,%,$(rcs_archive))
+
+# optional environment variable
+ENVVAR ?=
+
+# globally required environment variable
+ifdef $(HOME)
+	$(error HOME not set)
+endif
+
+# environment variable required by target
+echo_home:
+	if [ -z $(HOME) ]; then echo 'HOME not defined'; false; fi
+	echo $(HOME)
+
 FORCE:
 
-reveal-%: FORCE
+inspect-%: FORCE
 	@echo $($*)
 
-append-gitignore-%: FORCE
-	@grep --quiet --line-regexp --fixed-strings $* .gitignore 2> /dev/null \
-		|| echo $* >> .gitignore
+define add_gitignore
+	grep --quiet --line-regexp --fixed-strings $(1) .gitignore 2> /dev/null \
+	|| echo $(1) >> .gitignore
+	sort -o .gitignore{,}
+endef
 
-remove-gitignore-%: FORCE
-	sed --in-place '/$*/d' .gitignore
+define del_gitignore
+	sed --in-place '\,$*,d' .gitignore
+	sort -o .gitignore{,}
+endef
 
-src-dir := src
-src-config-dir := $(src-dir)/config
-src-xfce4-dir := $(src-config-dir)/xfce4
-src-xresources-dir := $(src-config-dir)/Xresources.d
+add-gitignore-%: FORCE
+	@$(call add_gitignore,$*)
 
-stamp-dir := .stamps
-stamp-backup-dir := $(stamp-dir)/backups
-stamp-install-dir := $(stamp-dir)/installs
-stamp-uninstall-dir := $(stamp-dir)/uninstalls
+add-gitignore-/%: FORCE
+	@$(call add_gitignore,$*)
 
-$(stamp-dir) $(stamp-backup-dir) $(stamp-install-dir) $(stamp-uninstall-dir):
-	@mkdir --parents $@
+del-gitignore-%: FORCE
+	@$(call del_gitignore,$*)
 
-.PHONY: stampdir
-stampdir: $(stamp-dir) append-gitignore-$(stamp-dir)/
+del-gitignore-/%: FORCE
+	@$(call del_gitignore,$*)
 
-all-srcs := $(wildcard $(src-dir)/*)
-all-srcs := $(filter-out $(src-config-dir),$(all-srcs))
-all-srcs += $(wildcard $(src-config-dir)/*)
-all-srcs := $(filter-out $(src-xfce4-dir),$(all-srcs))
-all-srcs += $(wildcard $(src-xfce4-dir)/*)
-all-srcs := $(filter-out $(src-xresources-dir)/,$(all-srcs))
-all-srcs += $(wildcard $(src-xresources-dir)/*)
+all_components := componentA componentB
+all_targets := $(patsubst %,setup-%,$(all_components))
+all_targets += $(patsubst %,build-%,$(all_components))
+all_targets += $(patsubst %,test-%,$(all_components))
+all_targets += $(patsubst %,doc-%,$(all_components))
+all_targets += $(patsubst %,install-%,$(all_components))
+all_targets += $(patsubst %,uninstall-%,$(all_components))
+all_targets += $(patsubst %,maintainer-clean-%,$(all_components))
+all_targets += $(patsubst %,clean-%,$(all_components))
 
-all-dsts := $(subst $(src-dir)/,${HOME}/.,$(all-srcs))
+.PHONY: all_targets
 
-restore-%: FORCE
+$(filter setup-%,$(all_targets)): setup-%:
+	@echo 'setup for component: $*'
 
-backup-suffix := dpopchevbak
-$(stamp-backup-dir)/%.stamp: | $(stamp-backup-dir)
-	@if [[ -e $(filter %$*,$(all-dsts)) ]]; then \
-		echo '-- backup $(filter %$*,$(all-dsts))'; \
-		mv --force --no-target-directory --backup=numbered \
-		$(filter %$*,$(all-dsts)) $(filter %$*,$(all-dsts)).$(backup-suffix); \
-	fi
-	@mkdir --parents $(dir $@)
-	@rm --force $(stamp-uninstall-dir)/$*.stamp
-	@touch $@
+.PHONY: setup
+setup: $(filter setup-%,$(all_targets))
+	@echo 'setup up completed'
 
-$(stamp-install-dir)/%.stamp: | $(stamp-install-dir)
-	@echo '-- install $(notdir $*)'
-	@mkdir --parents $(dir $(filter %$*,$(all-dsts)))
-	@ln -s $(realpath $(filter %$*,$(all-srcs))) $(filter %$*,$(all-dsts))
-	@mkdir --parents $(dir $@)
-	@touch $@
+$(filter build-%,$(all_targets)): build-%:
+	@echo 'build for component: $*'
 
-$(stamp-uninstall-dir)/%.stamp: | $(stamp-uninstall-dir)
-	@if [[ ! -e $(stamp-install-dir)/$*.stamp ]]; then\
-		echo '-- cannot proceed, installation stamp missing for $(notdir $*)'; \
-		exit 2;\
-	fi
-	@rm --force $(filter %$*,$(all-dsts))
-	@if [[ -e $(filter %$*,$(all-dsts)).$(backup-suffix) ]]; then \
-		echo '-- restore $*'; \
-		mv --force \
-		$(filter %$*,$(all-dsts)).$(backup-suffix) $(filter %$*,$(all-dsts)); \
-	else \
-		echo '-- no backup found $*'; \
-		echo '---- restore manually by looking up at $(dir $(filter %$*,$(all-dsts)))'; \
-		echo '---- for files with extension of the form $(backup-suffix).~\d~'; \
-	fi
-	@rm --force $(stamp-install-dir)/$*.stamp
-	@rm --force $(stamp-backup-dir)/$*.stamp
+.PHONY: build
+build: $(filter build-%,$(all_targets))
+	@echo 'build up completed'
 
-all-install-goals :=
-all-uninstall-goals :=
+$(filter test-%,$(all_targets)): test-%:
+	@echo 'test for component: $*'
 
-bash-srcs := bashrc.private config/bashrc.d
-bash-stamps := $(bash-srcs:=.stamp)
-bash-steps := $(addprefix $(stamp-backup-dir)/,$(bash-stamps))
-bash-steps += $(addprefix $(stamp-install-dir)/,$(bash-stamps))
+.PHONY: test
+test: $(filter test-%,$(all_targets))
+	@echo 'test up completed'
 
-all-install-goals += install-bash
-.PHONY: install-bash ### bashrc.private and config/bashrc.d
-install-bash: $(bash-steps)
+.PHONY: lint
+lint:
+	@echo 'static code analysis'
 
-all-uninstall-goals += uninstall-bash
-.PHONY: uninstall-bash
-uninstall-bash: $(addprefix $(stamp-uninstall-dir)/,$(bash-stamps))
+.PHONY: check
+check: test lint
+	@echo 'completed $^'
 
-single-srcs := ctags gitconfig inputrc dpopchev xxkbrc
+$(filter doc-%,$(all_targets)): doc-%:
+	@echo 'doc for component: $*'
 
-single-install-goals := $(addprefix install-,$(single-srcs))
-all-install-goals += $(single-install-goals)
-.PHONY: $(single-install-goals)
-$(single-install-goals): install-%: $(stamp-backup-dir)/%.stamp $(stamp-install-dir)/%.stamp
+.PHONY: doc
+doc: $(filter doc-%,$(all_targets))
+	@echo 'doc up completed'
 
-single-uninstall-goals := $(addprefix uninstall-,$(single-srcs))
-all-uninstall-goals += $(single-uninstall-goals)
-.PHONY: $(single-uninstall-goals)
-$(single-uninstall-goals): uninstall-%: $(stamp-uninstall-dir)/%.stamp
+$(filter install-%,$(all_targets)): install-%:
+	@echo 'install for component: $*'
 
-vim-home := $(HOME)/.vim
-vim-srcs := vimrc
-vim-stamps := $(vim-srcs:=.stamp)
-vim-steps := $(addprefix $(stamp-backup-dir)/,$(vim-stamps))
-vim-steps += $(addprefix $(stamp-install-dir)/,$(vim-stamps))
+.PHONY: install
+install: $(filter install-%,$(all_targets))
+	@echo 'install up completed'
 
-all-install-goals += install-vim
-.PHONY: install-vim ### vimrc and $(HOME)/.vim
-install-vim: $(vim-steps)
-	@if [[ -e $(vim-home) ]]; then\
-		mv --force --no-target-directory --backup=numbered \
-		$(vim-home) $(vim-home).$(backup-suffix);\
-	fi
-	@mkdir --parents $(vim-home)/tmp
+$(filter uninstall-%,$(all_targets)): uninstall-%:
+	@echo 'uninstall for component: $*'
 
-all-uninstall-goals += uninstall-vim
-.PHONY: uninstall-vim
-uninstall-vim: $(addprefix $(stamp-uninstall-dir)/,$(vim-stamps))
-	@rm --force --recursive $(vim-home)/
-	@if [[ -e $(vim-home).$(backup-suffix) ]]; then\
-		mv --force --no-target-directory --backup=numbered $(vim-home).$(backup-suffix) $(vim-home);\
-	fi
+.PHONY: uninstall
+uninstall: $(filter uninstall-%,$(all_targets))
+	@echo 'uninstall up completed'
 
-nvim-srcs := config/nvim
-nvim-stamps := $(nvim-srcs:=.stamp)
-nvim-steps := $(addprefix $(stamp-backup-dir)/,$(nvim-stamps))
-nvim-steps += $(addprefix $(stamp-install-dir)/,$(nvim-stamps))
-nvim-steps += install-vim
+$(filter maintainer-clean-%,$(all_targets)): maintainer-clean-%:
+	@echo 'maintainer-clean for component: $*'
 
-all-install-goals += install-nvim
-.PHONY: install-nvim ### vim and neovim specific
-install-nvim: $(nvim-steps)
+.PHONY: maintainer-clean
+maintainer-clean: $(filter maintainer-clean-%,$(all_targets))
+maintainer-clean: maintainer-clean-TAGS
+	@echo 'maintainer-clean up completed'
 
-all-uninstall-goals += uninstall-nvim
-.PHONY: uninstall-nvim
-uninstall-nvim: $(addprefix $(stamp-uninstall-dir)/,$(nvim-stamps)) uninstall-vim
+$(filter clean-%,$(all_targets)): clean-%:
+	@echo 'clean for component: $*'
 
-i3-config-srcs := config/i3
-i3-config-stamp := $(i3-config-srcs:=.stamp)
-i3-config-steps := $(addprefix $(stamp-backup-dir)/,$(i3-config-stamp))
-i3-config-steps += $(addprefix $(stamp-install-dir)/,$(i3-config-stamp))
+.PHONY: clean
+clean: $(filter clean-%,$(all_targets))
+	@echo 'clean up completed'
 
-.PHONY: install-i3-config
-install-i3-config: $(i3-config-steps)
+.PHONY: TAGS
+TAGS:
+	@echo 'creating stags file'
 
-.PHONY: uninstall-i3-config
-uninstall-i3-config: $(addprefix $(stamp-uninstall-dir)/,$(i3-config-stamp))
+.PHONY: maintainer-clean-TAGS
+maintainer-clean-TAGS:
+	@echo 'rm ctags file'
 
-tmux-config-srcs := config/tmux
-tmux-config-stamp := $(tmux-config-srcs:=.stamp)
-tmux-config-steps := $(addprefix $(stamp-backup-dir)/,$(tmux-config-stamp))
-tmux-config-steps += $(addprefix $(stamp-install-dir)/,$(tmux-config-stamp))
+.PHONY: dist
+dist:
+	@echo 'Create distribution file of the project'
 
-.PHONY: install-tmux-config
-install-tmux-config: $(tmux-config-steps)
+.PHONY: distclean
+distclean:
+	@echo 'Delete all created for packaging or building the program'
 
-.PHONY: uninstall-tmux-config
-uninstall-tmux-config: $(addprefix $(stamp-uninstall-dir)/,$(tmux-config-stamp))
-
-redshift-config-srcs := config/redshift.conf
-redshift-config-stamp := $(redshift-config-srcs:=.stamp)
-redshift-config-steps := $(addprefix $(stamp-backup-dir)/,$(redshift-config-stamp))
-redshift-config-steps += $(addprefix $(stamp-install-dir)/,$(redshift-config-stamp))
-
-.PHONY: install-redshift-config
-install-redshift-config: $(redshift-config-steps)
-
-.PHONY: uninstall-redshift-config
-uninstall-redshift-config: $(addprefix $(stamp-uninstall-dir)/,$(redshift-config-stamp))
-
-i3-status-srcs := config/i3status
-i3-status-stamp := $(i3-status-srcs:=.stamp)
-i3-status-steps := $(addprefix $(stamp-backup-dir)/,$(i3-status-stamp))
-i3-status-steps += $(addprefix $(stamp-install-dir)/,$(i3-status-stamp))
-
-.PHONY: install-i3-status
-install-i3-status: $(i3-status-steps)
-
-.PHONY: uninstall-i3-status
-uninstall-i3-status: $(addprefix $(stamp-uninstall-dir)/,$(i3-status-stamp))
-
-all-install-goals += install-i3
-.PHONY: install-i3 ### configs for i3 and i3status
-install-i3: install-i3-config install-i3-status
-
-all-uninstall-goals += uninstall-i3
-.PHONY: uninstall-i3
-uninstall-i3: uninstall-i3-config uninstall-i3-status
-
-xfce4-terminal-srcs := config/xfce4/terminal
-xfce4-terminal-stamps := $(xfce4-terminal-srcs:=.stamp)
-xfce4-terminal-steps := $(addprefix $(stamp-backup-dir)/,$(xfce4-terminal-stamps))
-xfce4-terminal-steps += $(addprefix $(stamp-install-dir)/,$(xfce4-terminal-stamps))
-
-.PHONY: install-xfce4-terminal
-install-xfce4-terminal: $(xfce4-terminal-steps)
-
-.PHONY: uninstall-xfce4-terminal
-uninstall-xfce4-terminal: $(addprefix $(stamp-uninstall-dir)/,$(xfce4-terminal-stamps))
-
-alacritty-terminal-srcs := config/alacritty
-alacritty-terminal-stamps := $(alacritty-terminal-srcs:=.stamp)
-alacritty-terminal-steps := $(addprefix $(stamp-backup-dir)/,$(alacritty-terminal-stamps))
-alacritty-terminal-steps += $(addprefix $(stamp-install-dir)/,$(alacritty-terminal-stamps))
-
-.PHONY: install-alacritty-terminal
-install-alacritty-terminal: $(alacritty-terminal-steps)
-
-.PHONY: uninstall-alacritty-terminal
-uninstall-alacritty-terminal: $(addprefix $(stamp-uninstall-dir)/,$(alacritty-terminal-stamps))
-
-xresources-conf := $(HOME)/.Xresources
-xresources-home := $(HOME)/.config/Xresources.d
-xresources-xft-srcs := config/Xresources.d/xft
-xresources-xft-stamps := $(xresources-xft-srcs:=.stamp)
-xresources-xft-steps := $(addprefix $(stamp-backup-dir)/,$(xresources-xft-stamps))
-xresources-xft-steps += $(addprefix $(stamp-install-dir)/,$(xresources-xft-stamps))
-
-.PHONY: install-xresources-xft
-install-xresources-xft: $(xresources-xft-steps)
-	@grep --quiet --line-regexp --fixed-strings xft $(xresources-conf) 2> /dev/null \
-		|| echo '#include "$(xresources-home)/xft"' >> $(xresources-conf)
-
-.PHONY: uninstall-xresources-xft
-uninstall-xresources-xft: $(addprefix $(stamp-uninstall-dir)/,$(xresources-xft-stamps))
-	@sed --in-place '/xft/d' $(xresources-conf)
-
-.PHONY: install ### install all at once
-install: $(all-install-goals)
-
-.PHONY: uninstall ### uninstall all at once
-uninstall: $(all-uninstall-goals)
+.PHONY: all
+all:
+	@echo 'Usually the default target, does it all'
