@@ -44,9 +44,13 @@ endef
 stamp_dir := .stamps
 src_dir := src
 
-configs := a
+configs := bash_profile bashrc.private
 config_dsts := $(addprefix ${HOME}/.,$(configs))
 config_stamps := $(addprefix $(stamp_dir)/,$(addsuffix .stamp,$(configs)))
+
+configs += bashrc.d
+config_dsts += ${HOME}/.config/bashrc.d
+config_stamps += $(stamp_dir)/bashrc.d.stamp
 
 $(stamp_dir):
 	@$(call add_gitignore,$@)
