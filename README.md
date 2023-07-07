@@ -1,5 +1,11 @@
 # linux-bash
 
-Project to make easy migration trough systems of my favourite bash configurations.
+Configurations for bash, easy to migrate.
 
 ## Quickstart
+
+```
+git clone https://github.com/dpopchev/linux-bash
+cd linux-bash
+make install
+```
