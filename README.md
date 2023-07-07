@@ -1,6 +1,6 @@
 # linux-bash
 
-Configurations for bash, easy to migrate.
+Configuration to distribute for `bash`.
 
 ## Quickstart
 
