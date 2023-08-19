@@ -57,6 +57,15 @@ $(stamp_dir):
 	@mkdir --parents $@
 	@$(call log,'create $@','[done]')
 
+profile_config := $(src_dir)/profile
+profile_dst := ${HOME}/.profile
+profile_stamp := $(stamp_dir)/profile.stamp
+$(profile_stamp):
+	@$(call backup_config,$(profile_dst))
+	@ln -s $(realpath $(profile_config)) $(profile_dst)
+	@touch $@
+	@$(call log,'install profile','[done]')
+
 $(config_stamps): $(stamp_dir)/%.stamp: | $(stamp_dir)
 	@$(call backup_config,$(filter %$*,$(config_dsts)))
 	@ln -s $(realpath $(src_dir)/$(filter %$*,$(configs))) $(filter %$*,$(config_dsts))
@@ -68,7 +77,7 @@ install_config_targets := $(addprefix install-,$(configs))
 $(install_config_targets): install-%: $(stamp_dir)/%.stamp
 
 .PHONY: install
-install: $(install_config_targets)
+install: $(install_config_targets) $(profile_stamp)
 
 uninstall_config_targets := $(addprefix uninstall-,$(configs))
 .PHONY: $(uninstall_config_targets)
@@ -85,8 +94,21 @@ $(uninstall_config_targets): uninstall-%:
 	fi
 	@rm --force $(stamp_dir)/$*.stamp
 
+uninstall-profile:
+	@rm --force $(profile_dst)
+	@if [ -e $(profile_dst).$(backup_suffix) ]; then \
+		mv --force $(profile_dst).$(backup_suffix) $(profile_dst);\
+	fi
+	@if [ -e $(profile_dst) ]; then \
+		$(call log,'restore config profile','[done]');\
+	fi
+	@if [ ! -e $(profile_dst) ]; then \
+		$(call log,'restore config profile; inspect localtion manually','[fail]');\
+	fi
+	@rm --force $(profile_stamp)
+
 .PHONY: uninstall
-uninstall: $(uninstall_config_targets)
+uninstall: $(uninstall_config_targets) uninstall-profile
 
 .PHONY: clean
 clean:
