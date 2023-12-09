@@ -3,11 +3,7 @@
 alias vim='nvim'
 alias v='nvim'
 
-alias t='tmux'
-
 alias g="git"
-alias gitemail='git config user.email ""'
-alias gituser='git config user.name "Dimitar Popchev"'
 alias gitroot='cd $(git root)'
 
 alias edit='${EDITOR}'
@@ -34,13 +30,9 @@ alias free='free -m'
 alias less='less -R'
 alias more='less'
 
-alias tree="tree -I '__init__.py|__pycache__|*egg-info'"
+alias treepython="tree -I '__init__.py|__pycache__|*egg-info'"
 
 alias hgrep='history | grep -i'
 
-alias diff_ignore_blanks="diff --ignore-tab-expansion --ignore-space-change --ignore-all-space --ignore-blank-lines --expand-tabs"
-
 alias diffpatch="diff -u"
 alias patch="patch -u -b"
-
-alias sshagent='ssh-add -l; [[ $? -eq 2 ]] && eval $(ssh-agent -s); ssh-add -t 120 ~/.ssh/*_id'
