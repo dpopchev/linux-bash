@@ -1,8 +1,8 @@
 # linux-bash
 
-Configuration to distribute for `bash`.
+Configuration for `bash`.
 
-## Quickstart
+## Install
 
 ```
 git clone https://github.com/dpopchev/linux-bash.git
