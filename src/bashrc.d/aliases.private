@@ -5,6 +5,7 @@ alias v='nvim'
 
 alias g="git"
 alias groot='cd $(git rev-parse --show-toplevel)'
+alias gr='cd $(git rev-parse --show-toplevel)'
 
 alias edit='${EDITOR}'
 
