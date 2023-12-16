@@ -4,8 +4,6 @@ alias vim='nvim'
 alias v='nvim'
 
 alias g="git"
-alias gitroot='cd $(git root)'
-alias groot='cd $(git root)'
 
 alias edit='${EDITOR}'
 
