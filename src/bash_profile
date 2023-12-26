@@ -6,6 +6,5 @@ export TERMINAL=alacritty
 rcfiles=(~/.bashrc ~/.bashrc.private)
 rcfiles+=(~/.pyenvrc)
 for rcfile in ${rcfiles[@]}; do
-    echo $rcfile
     [[ -f $rcfile ]] && source $rcfile
 done
