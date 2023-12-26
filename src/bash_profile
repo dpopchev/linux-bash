@@ -3,6 +3,9 @@ export EDITOR=nvim
 export VISUAL=nvim
 export TERMINAL=alacritty
 
-[[ -f ~/.bashrc ]] && source ~/.bashrc
-[[ -f ~/.bashrc.private ]] && source ~/.bashrc.private
-
+rcfiles=(~/.bashrc ~/.bashrc.private)
+rcfiles+=(~/.pyenvrc)
+for rcfile in ${rcfiles[@]}; do
+    echo $rcfile
+    [[ -f $rcfile ]] && source $rcfile
+done
